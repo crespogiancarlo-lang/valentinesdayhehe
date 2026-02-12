@@ -76,7 +76,6 @@
       color:#333;
     }
 
-    /* top controls */
     .topbar{
       position:absolute;
       top:16px;
@@ -103,7 +102,6 @@
       box-shadow:none;
     }
 
-    /* slideshow */
     .slideshow{
       display:grid;
       grid-template-columns: 1.1fr .9fr;
@@ -135,7 +133,6 @@
       .slideshow{ grid-template-columns: 1fr; }
     }
 
-    /* Valentine question */
     .begRow{
       display:flex;
       gap:14px;
@@ -150,7 +147,6 @@
       background:#fff;
     }
 
-    /* NO button runaway */
     .noZone{
       position:relative;
       height:120px;
@@ -169,7 +165,6 @@
       transform: translateX(-50%);
     }
 
-    /* confetti canvas */
     #confetti{
       position:fixed;
       inset:0;
@@ -177,7 +172,6 @@
       display:none;
     }
 
-    /* floating hearts background */
     .heart{
       position:fixed;
       width:18px;
@@ -203,7 +197,6 @@
       to{ transform: translateY(-110vh) rotate(45deg); opacity:0; }
     }
 
-    /* final photo */
     .finalPhoto{
       width:min(520px, 86vw);
       aspect-ratio: 4 / 3;
@@ -228,6 +221,7 @@
 
   <!-- audio -->
   <audio id="bgMusic" src="assets/audio/music.mp3" loop></audio>
+  <audio id="drumroll" src="assets/audio/drumroll.mp3" loop></audio>
   <audio id="fireworks" src="assets/audio/fireworks.mp3"></audio>
 
   <div class="wrap">
@@ -305,16 +299,15 @@
         </p>
         <p style="font-size:22px">🥳😍😚💞✨🥰🎇</p>
         <div class="btnRow">
-          <button class="primary" id="replay" type="button">Replay 💫</button>
+          <button class="primary" id="replay" type="button">Reset 💫</button>
         </div>
       </section>
-
     </div>
   </div>
 
   <script>
     // ---------------------------
-    // CONFIG: customize these
+    // CONFIG: slides + final photo
     // ---------------------------
     const slides = [
       { src: "assets/photos/1.jpeg", caption: "memory 1 ❤️" },
@@ -323,7 +316,6 @@
       { src: "assets/photos/4.jpeg", caption: "memory 4 💕" },
     ];
 
-    // choose a final photo (make sure the file exists!)
     const finalPhotoSrc = "assets/photos/final.jpeg";
     document.getElementById("finalImg").src = finalPhotoSrc;
 
@@ -340,7 +332,68 @@
       p.classList.remove("hidden");
     }
 
-    document.getElementById("p1Yes").addEventListener("click", () => showPage(page2));
+    // ---------------------------
+    // Audio control
+    // ---------------------------
+    const musicBtn = document.getElementById("musicBtn");
+    const bgMusic = document.getElementById("bgMusic");
+    const drumroll = document.getElementById("drumroll");
+    const fireworks = document.getElementById("fireworks");
+
+    let musicOn = false;
+
+    function stopAllAudio() {
+      [bgMusic, drumroll, fireworks].forEach(a => {
+        a.pause();
+        a.currentTime = 0;
+      });
+    }
+
+    async function playBgMusicIfEnabled() {
+      if (!musicOn) return;
+      try {
+        bgMusic.volume = 0.6;
+        await bgMusic.play();
+      } catch (e) { /* autoplay block */ }
+    }
+
+    async function playDrumroll() {
+      try {
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+        drumroll.currentTime = 0;
+        drumroll.volume = 0.85;
+        await drumroll.play();
+      } catch (e) { /* autoplay block */ }
+    }
+
+    async function playFireworksOnly() {
+      try {
+        bgMusic.pause(); bgMusic.currentTime = 0;
+        drumroll.pause(); drumroll.currentTime = 0;
+
+        fireworks.currentTime = 0;
+        fireworks.volume = 1.0;
+        await fireworks.play();
+      } catch (e) { /* autoplay block */ }
+    }
+
+    // Music button toggles ONLY background music
+    musicBtn.addEventListener("click", () => {
+      if (!musicOn) {
+        bgMusic.volume = 0.6;
+        bgMusic.play().then(() => {
+          musicOn = true;
+          musicBtn.textContent = "Pause";
+        }).catch(() => {
+          alert("Click anywhere on the page once, then press Play again 🙂");
+        });
+      } else {
+        bgMusic.pause();
+        musicOn = false;
+        musicBtn.textContent = "Play";
+      }
+    });
 
     // ---------------------------
     // Slideshow
@@ -365,7 +418,19 @@
       renderSlide();
     });
 
-    document.getElementById("toQuestion").addEventListener("click", () => showPage(page3));
+    // ---------------------------
+    // Start / transitions
+    // ---------------------------
+    document.getElementById("p1Yes").addEventListener("click", async () => {
+      showPage(page2);
+      // if user had music on, keep it going
+      await playBgMusicIfEnabled();
+    });
+
+    document.getElementById("toQuestion").addEventListener("click", async () => {
+      showPage(page3);
+      await playDrumroll(); // cuts bg music + loops drumroll here
+    });
 
     // ---------------------------
     // NO button runaway
@@ -382,7 +447,7 @@
       const maxY = zoneRect.height - btnRect.height;
 
       const x = Math.max(0, Math.random() * maxX);
-      const y = Math.max(0, Math.random() * (maxY * 0.55)); // keep it mostly above yes
+      const y = Math.max(0, Math.random() * (maxY * 0.55)); // mostly above YES
 
       noBtn.style.left = x + "px";
       noBtn.style.top = y + "px";
@@ -394,33 +459,8 @@
     noBtn.addEventListener("touchstart", (e) => { e.preventDefault(); moveNo(); }, {passive:false});
 
     // ---------------------------
-    // Music toggle
+    // Confetti
     // ---------------------------
-    const musicBtn = document.getElementById("musicBtn");
-    const bgMusic = document.getElementById("bgMusic");
-    let musicOn = false;
-
-    async function toggleMusic(){
-      try{
-        if(!musicOn){
-          await bgMusic.play();
-          musicOn = true;
-          musicBtn.textContent = "Pause";
-        } else {
-          bgMusic.pause();
-          musicOn = false;
-          musicBtn.textContent = "Play";
-        }
-      } catch(err){
-        alert("Tap again — your browser may block autoplay until you interact 🙂");
-      }
-    }
-    musicBtn.addEventListener("click", toggleMusic);
-
-    // ---------------------------
-    // YES -> celebration
-    // ---------------------------
-    const fireworks = document.getElementById("fireworks");
     const confettiCanvas = document.getElementById("confetti");
     const ctx = confettiCanvas.getContext("2d");
 
@@ -452,12 +492,10 @@
     function tickConfetti(){
       if(!confettiOn) return;
       ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
-
       for(const p of confettiPieces){
         p.x += p.vx;
         p.y += p.vy;
         p.rot += p.vr;
-
         if(p.y > confettiCanvas.height + 30) {
           p.y = -30;
           p.x = Math.random()*confettiCanvas.width;
@@ -474,6 +512,7 @@
       requestAnimationFrame(tickConfetti);
     }
 
+    // Floating hearts background
     function makeHearts(){
       const heart = document.createElement("div");
       heart.className = "heart";
@@ -490,19 +529,31 @@
     }
     setInterval(makeHearts, 450);
 
+    // ---------------------------
+    // YES -> final celebration (no bg music)
+    // ---------------------------
     yesBtn.addEventListener("click", async () => {
       showPage(page4);
       startConfetti();
-
-      try { await fireworks.play(); } catch(e){ /* ignore if blocked */ }
+      await playFireworksOnly(); // stops drumroll + bg, plays fireworks
     });
 
-    document.getElementById("replay").addEventListener("click", () => {
+    // ---------------------------
+    // Reset -> stop celebration and restart bg music (if enabled)
+    // ---------------------------
+    document.getElementById("replay").addEventListener("click", async () => {
       confettiOn = false;
       confettiCanvas.style.display = "none";
+
+      // stop celebration audio, restart bg music if user wants
+      drumroll.pause(); drumroll.currentTime = 0;
+      fireworks.pause(); fireworks.currentTime = 0;
+
       idx = 0;
       renderSlide();
       showPage(page1);
+
+      await playBgMusicIfEnabled();
     });
   </script>
 </body>
